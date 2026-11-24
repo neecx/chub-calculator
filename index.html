@@ -16,6 +16,8 @@
   --accent-ink: #ffffff;
   --accent2: #b5532a;
   --accent2-ink: #ffffff;
+  --accent3: #4b4a9e;
+  --accent3-ink: #ffffff;
   --warn: #a4380f;
   --font: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
@@ -31,6 +33,8 @@
     --accent-ink: #0d1a1a;
     --accent2: #f0a07a;
     --accent2-ink: #2a140a;
+    --accent3: #a9a8f0;
+    --accent3-ink: #14143a;
     --warn: #ff9d77;
     color-scheme: dark;
   }
@@ -45,6 +49,8 @@
   --accent-ink: #0d1a1a;
   --accent2: #f0a07a;
   --accent2-ink: #2a140a;
+  --accent3: #a9a8f0;
+  --accent3-ink: #14143a;
   --warn: #ff9d77;
   color-scheme: dark;
 }
@@ -80,7 +86,9 @@ h1 { font-size: 1.25rem; margin: 0; font-weight: 700; text-wrap: balance; }
 .result.error .big { font-size: 1.1rem !important; line-height: 1.3; }
 .cards .result.error { grid-column: 1 / -1; }
 #meals-card:not(.error) { background: var(--accent2); color: var(--accent2-ink); }
-#meals-card.hidden { display: none; }
+#cost-card { grid-column: 1 / -1; }
+#cost-card:not(.error) { background: var(--accent3); color: var(--accent3-ink); }
+#meals-card.hidden, #cost-card.hidden { display: none; }
 
 .panel {
   background: var(--surface);
@@ -117,6 +125,7 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   <div class="cards" aria-live="polite">
     <section id="result" class="result"></section>
     <section id="meals-card" class="result"></section>
+    <section id="cost-card" class="result"></section>
   </div>
 
   <section class="panel" aria-label="Inputs">
@@ -139,6 +148,10 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     <div class="field">
       <label for="chub-g">Chub weight (g)</label>
       <input id="chub-g" type="number" inputmode="decimal" min="1" step="any" value="500">
+    </div>
+    <div class="field">
+      <label for="day-rate">Kennel cost per day (£)</label>
+      <input id="day-rate" type="number" inputmode="decimal" min="0" step="any" value="24">
     </div>
   </section>
 
@@ -167,22 +180,26 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   function render() {
     var result = $("result");
     var mealsCard = $("meals-card");
+    var costCard = $("cost-card");
     var steps = $("steps");
     var s = $("start").value, e = $("end").value;
     var mealsPerDay = parseFloat($("meals").value);
     var mealG = parseFloat($("meal-g").value);
     var chubG = parseFloat($("chub-g").value);
+    var dayRate = parseFloat($("day-rate").value);
 
     var problem = null;
     if (!s || !e) problem = "Pick a start and end date.";
     else if (utcDay(e) < utcDay(s)) problem = "The end date is before the start date. Change one of them.";
     else if (!(mealsPerDay > 0) || !(mealG > 0) || !(chubG > 0)) problem = "Meals per day, each meal and chub weight all need a number above 0.";
+    else if (!(dayRate >= 0)) problem = "Kennel cost per day needs a number, 0 or more.";
 
     if (problem) {
       result.className = "result error";
       result.innerHTML = '<span class="label">Check your inputs</span><span class="big">' + problem + "</span>";
       steps.innerHTML = "";
       mealsCard.className = "result hidden";
+      costCard.className = "result hidden";
       return;
     }
 
@@ -206,10 +223,19 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
       '<span class="unit">' + (meals === 1 ? "meal" : "meals") + " of " + fmt(mealG) + "g</span>" +
       '<span class="note">' + days + (days === 1 ? " day" : " days") + " × " + fmt(mealsPerDay) + " a day.</span>";
 
+    var total = days * dayRate;
+    var gbp = function (n) { return "£" + n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    costCard.className = "result";
+    costCard.innerHTML =
+      '<span class="label">Kennel cost</span>' +
+      '<span class="big">' + gbp(total) + "</span>" +
+      '<span class="note">' + days + (days === 1 ? " day" : " days") + " × " + gbp(dayRate) + " a day, including the start and end dates.</span>";
+
     var rows = [
       ["Number of days", '<span class="sum">end date − start date + 1</span>', days],
       ["Number of meals", '<span class="sum">' + days + " × " + fmt(mealsPerDay) + "</span>", fmt(meals)],
       ["Volume needed", '<span class="sum">' + fmt(meals) + " × " + fmt(mealG) + "g</span>", fmt(grams) + "g"],
+      ["Kennel cost", '<span class="sum">' + days + " × " + gbp(dayRate) + "</span>", gbp(total)],
       ["Chubs needed", '<span class="sum">' + fmt(grams) + " ÷ " + fmt(chubG) + ", rounded up</span>", chubs]
     ];
     steps.innerHTML = rows.map(function (r) {
@@ -224,7 +250,7 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     }
   });
 
-  ["start", "end", "meals", "meal-g", "chub-g"].forEach(function (id) {
+  ["start", "end", "meals", "meal-g", "chub-g", "day-rate"].forEach(function (id) {
     $(id).addEventListener("input", render);
     $(id).addEventListener("change", render);
   });
