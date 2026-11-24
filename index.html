@@ -68,9 +68,12 @@ main { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; 
 h1 { font-size: 1.25rem; margin: 0; font-weight: 700; text-wrap: balance; }
 .sub { margin: 2px 0 0; color: var(--muted); font-size: 0.9rem; }
 
-.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.cards .result { padding: 16px; min-width: 0; }
-.cards .result .big { font-size: 3.25rem; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cards .result { padding: 12px; min-width: 0; }
+.cards .result .big { font-size: clamp(1.6rem, 7.5vw, 2.5rem); }
+.cards .result .label { font-size: 0.75rem; }
+.cards .result .unit { font-size: 0.8rem; }
+.cards .result .note { font-size: 0.72rem; }
 .result {
   background: var(--accent);
   color: var(--accent-ink);
@@ -86,7 +89,6 @@ h1 { font-size: 1.25rem; margin: 0; font-weight: 700; text-wrap: balance; }
 .result.error .big { font-size: 1.1rem !important; line-height: 1.3; }
 .cards .result.error { grid-column: 1 / -1; }
 #meals-card:not(.error) { background: var(--accent2); color: var(--accent2-ink); }
-#cost-card { grid-column: 1 / -1; }
 #cost-card:not(.error) { background: var(--accent3); color: var(--accent3-ink); }
 #meals-card.hidden, #cost-card.hidden { display: none; }
 
@@ -224,18 +226,19 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
       '<span class="note">' + days + (days === 1 ? " day" : " days") + " × " + fmt(mealsPerDay) + " a day.</span>";
 
     var total = days * dayRate;
-    var gbp = function (n) { return "£" + n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var gbp = function (n) { return "£" + n.toLocaleString("en-GB", { maximumFractionDigits: n === Math.round(n) ? 0 : 2 }); };
+    var gbp0 = function (n) { return "£" + n.toLocaleString("en-GB", { maximumFractionDigits: 0 }); };
     costCard.className = "result";
     costCard.innerHTML =
       '<span class="label">Kennel cost</span>' +
-      '<span class="big">' + gbp(total) + "</span>" +
-      '<span class="note">' + days + (days === 1 ? " day" : " days") + " × " + gbp(dayRate) + " a day, including the start and end dates.</span>";
+      '<span class="big">' + gbp0(total) + "</span>" +
+      '<span class="note">' + days + (days === 1 ? " day" : " days") + " × " + gbp(dayRate) + " a day.</span>";
 
     var rows = [
       ["Number of days", '<span class="sum">end date − start date + 1</span>', days],
       ["Number of meals", '<span class="sum">' + days + " × " + fmt(mealsPerDay) + "</span>", fmt(meals)],
       ["Volume needed", '<span class="sum">' + fmt(meals) + " × " + fmt(mealG) + "g</span>", fmt(grams) + "g"],
-      ["Kennel cost", '<span class="sum">' + days + " × " + gbp(dayRate) + "</span>", gbp(total)],
+      ["Kennel cost", '<span class="sum">' + days + " × " + gbp(dayRate) + "</span>", gbp0(total)],
       ["Chubs needed", '<span class="sum">' + fmt(grams) + " ÷ " + fmt(chubG) + ", rounded up</span>", chubs]
     ];
     steps.innerHTML = rows.map(function (r) {
